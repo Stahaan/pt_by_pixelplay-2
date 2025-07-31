@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PT by PixelPlay</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body { background: #181818; color: #fff; font-family: monospace; margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+        #main-logo { font-size: 2.2em; margin: 48px 0 18px 0; letter-spacing: 2px; animation: breathe 2.4s ease-in-out infinite; }
+        @keyframes breathe {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.08); opacity: 0.85; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .game-btn {
+            background: #ff9800; color: #fff; border: 2px solid #fff; border-radius: 8px;
+            font-size: 1.2em; padding: 16px 32px; margin: 18px 0; cursor: pointer;
+            transition: background 0.2s, color 0.2s; display: flex; align-items: center; gap: 10px;
+        }
+        .game-btn:hover { background: #ffa726; color: #222; }
+        .instructions {
+            max-width: 480px;
+            margin: 24px 0;
+            color: #eee;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .footer { color: #aaa; margin-top: 48px; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div id="main-logo">PT by <span style="color:#ff9800">PixelPlay</span></div>
+    <div class="instructions">
+        <h2>Welcome PixelPlayr!</h2>
+        <p>
+            <b>PT by PixelPlay</b> is a 2-in-1 pixel-style browser game.<br>
+            <br>
+            <b>Portal Runner:</b> <br>
+            - Auto-runner, jump with <b>Space</b> or tap.<br>
+            - Land on platforms, use orange portals for bonuses or teleport.<br>
+            - Don't fall!<br>
+            <br>
+            <b>Lock-On Legends:</b><br>
+            - Click/tap targets to score.<br>
+            - Miss 3 times and it's game over.<br>
+            - Difficulty increases over time.<br>
+            <br>
+            Use the floating menu in-game for <b>Pause</b>, <b>Restart</b>, <b>Music</b>, and <b>Home</b>.
+        </p>
+    </div>
+    <a href="portal.html" class="game-btn"><i class="fas fa-running"></i> Start Portal Runner</a>
+    <a href="lockon.html" class="game-btn"><i class="fas fa-crosshairs"></i> Start Lock-On Legends</a>
+    <div class="footer">© PixelPlay</div>
+</body>
+</html>

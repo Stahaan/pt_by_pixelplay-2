@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Runner - PT by PixelPlay</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body { background: #181818; color: #fff; font-family: monospace; margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+        #main-logo { font-size: 2.2em; margin: 32px 0 18px 0; letter-spacing: 2px; animation: breathe 2.4s ease-in-out infinite; }
+        @keyframes breathe { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.85; } 100% { transform: scale(1); opacity: 1; } }
+        canvas { background: #222; display: block; margin: 0 auto; image-rendering: pixelated; border-radius: 12px; }
+        #floating-menu-btn {
+            width: 32px; height: 32px;
+            background: #ff9800;
+            border: 3px solid #fff;
+            border-radius: 6px;
+            margin: 18px auto 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px #0006;
+            font-size: 18px;
+            transition: background 0.2s;
+            position: relative;
+        }
+        #floating-menu-btn:active { background: #ffa726; }
+        #floating-menu-btn .pixel-dot {
+            width: 12px; height: 12px;
+            background: #fff;
+            border-radius: 2px;
+            box-shadow: 0 0 0 2px #ff9800;
+        }
+        #floating-menu {
+            display: none;
+            position: relative;
+            margin: 0 auto;
+            margin-top: 8px;
+            background: #222;
+            border: 2px solid #ff9800;
+            border-radius: 12px;
+            box-shadow: 0 2px 16px #000a;
+            padding: 12px 24px;
+            z-index: 20;
+            min-width: 240px;
+            text-align: center;
+            animation: fadeIn 0.2s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(16px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+        .menu-btn {
+            background: #ff9800;
+            color: #fff;
+            border: 2px solid #fff;
+            border-radius: 8px;
+            font-size: 1.4em;
+            margin: 0 10px;
+            padding: 10px 18px;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            box-shadow: 0 2px 8px #0004;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .menu-btn:hover { background: #ffa726; color: #222; }
+        .menu-btn i { margin-right: 6px; }
+        #ui {
+            position: absolute;
+            top: 0; left: 0; width: 100%; pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px; /* Add spacing between score and highscore */
+        }
+        #score, #highscore {
+            font-family: monospace;
+            color: #ff9800;
+            font-size: 1.1em;
+            text-align: right;
+            text-shadow: 1px 1px 2px #000a;
+            margin-right: 16px;
+        }
+        .hide { display: none !important; }
+        @media (max-width: 600px) {
+            #floating-menu { min-width: 0; padding: 10px 4px; }
+            .menu-btn { font-size: 1.1em; padding: 8px 10px; margin: 0 4px; }
+        }
+    </style>
+</head>
+<body>
+<div id="main-logo">PT by <span style="color:#ff9800">PixelPlay</span></div>
+<canvas id="game" width="480" height="320"></canvas>
+<div id="floating-menu-btn" title="Menu"><div class="pixel-dot"></div></div>
+<div id="floating-menu">
+    <a href="index.html" class="menu-btn" id="menu-home" title="Home"><i class="fas fa-home"></i>Home</a>
+    <button class="menu-btn" id="menu-restart" title="Restart"><i class="fas fa-redo"></i>Restart</button>
+    <button class="menu-btn" id="menu-pause" title="Pause/Resume"><i class="fas fa-pause"></i>Pause</button>
+    <button class="menu-btn" id="menu-music" title="Music"><i class="fas fa-music"></i>Music</button>
+</div>
+<div id="ui">
+    <div id="score"></div>
+    <div id="highscore"></div>
+</div>
+<script>
+// --- Floating Menu Logic ---
+const floatingMenuBtn = document.getElementById('floating-menu-btn');
+const floatingMenu = document.getElementById('floating-menu');
+const menuRestart = document.getElementById('menu-restart');
+const menuPause = document.getElementById('menu-pause');
+const menuMusic = document.getElementById('menu-music');
+let musicOn = true, musicAudio = null, paused = false, gameover = false;
+
+floatingMenuBtn.onclick = () => {
+    floatingMenu.style.display = floatingMenu.style.display === 'block' ? 'none' : 'block';
+};
+document.body.addEventListener('click', (e) => {
+    if (!floatingMenu.contains(e.target) && e.target !== floatingMenuBtn && !floatingMenuBtn.contains(e.target)) {
+        floatingMenu.style.display = 'none';
+    }
+}, true);
+
+menuRestart.onclick = () => { floatingMenu.style.display = 'none'; resetGame(); };
+menuPause.onclick = () => {
+    floatingMenu.style.display = 'none';
+    paused = !paused;
+    if (paused) drawPauseOverlay();
+};
+menuMusic.onclick = () => {
+    musicOn = !musicOn;
+    menuMusic.innerHTML = musicOn ? '<i class="fas fa-music"></i>Music' : '<i class="fas fa-volume-mute"></i>Muted';
+    if (musicOn) playMusic(); else stopMusic();
+};
+
+// --- Music ---
+function playMusic() {
+    if (!musicAudio) {
+        musicAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7e2.mp3');
+        musicAudio.loop = true;
+        musicAudio.volume = 0.2;
+    }
+    if (musicOn) musicAudio.play();
+}
+function stopMusic() { if (musicAudio) musicAudio.pause(); }
+
+// --- Game Logic ---
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const scoreDiv = document.getElementById('score');
+const highscoreDiv = document.getElementById('highscore');
+let score = 0, highscore = 0;
+
+let player, platforms, portals, particles, gravity, jumpV, speed, t;
+
+function resetGame() {
+    player = { x: 60, y: H-60, vy: 0, w: 24, h: 24, onGround: false };
+    platforms = [{x:0,y:H-36,w:W,h:16}];
+    portals = [];
+    particles = [];
+    gravity = 0.8; jumpV = -11; speed = 2; t = 0; score = 0; gameover = false; paused = false;
+    playMusic();
+}
+resetGame();
+
+function update() {
+    if (paused || gameover) return;
+    t++;
+    if (t % 300 === 0) speed += 0.2;
+
+    player.vy += gravity;
+    player.y += player.vy;
+    player.x += speed/2;
+
+    player.onGround = false;
+    for (let pf of platforms) {
+        if (player.x+player.w > pf.x && player.x < pf.x+pf.w &&
+            player.y+player.h > pf.y && player.y+player.h < pf.y+16 &&
+            player.vy >= 0) {
+            player.y = pf.y-player.h;
+            player.vy = 0;
+            player.onGround = true;
+        }
+    }
+
+    if (platforms.length<6) {
+        let last = platforms[platforms.length-1];
+        let px = last.x+last.w+Math.random()*60+40;
+        let pw = 60+Math.random()*60;
+        let py = H-36-Math.random()*80;
+        py = Math.max(40, Math.min(py, H-52));
+        platforms.push({x:px, y:py, w:pw, h:16});
+        if (Math.random()<0.4) {
+            portals.push({x:px+pw/2-12, y:py-20, w:24, h:24, type:Math.random()<0.5?'tele':'score', active:true});
+        }
+    }
+
+    for (let pf of platforms) pf.x -= speed;
+    for (let pt of portals) pt.x -= speed;
+
+    platforms = platforms.filter(pf=>pf.x+pf.w>0);
+    portals = portals.filter(pt=>pt.x+pt.w>0 && pt.active);
+
+    for (let pt of portals) {
+        if (pt.active && player.x+player.w>pt.x && player.x<pt.x+pt.w &&
+            player.y+player.h>pt.y && player.y<pt.y+pt.h) {
+            pt.active = false;
+            if (pt.type=='tele') {
+                let next = platforms.find(pf=>
+                    pf.x > player.x + 40 &&
+                    pf.x > 10 && pf.x + pf.w < W - 10 &&
+                    pf.y > 20 && pf.y < H-40
+                );
+                if (next) {
+                    player.x = next.x + 10;
+                    player.y = next.y - player.h;
+                    player.vy = 0;
+                    particles.push(...makeParticles(player.x+12, player.y+12, '#ff9800'));
+                } else {
+                    score += 10;
+                    particles.push(...makeParticles(player.x+12, player.y+12, '#ff9800'));
+                }
+            } else {
+                score += 10;
+                particles.push(...makeParticles(pt.x+12, pt.y+12, '#ff9800'));
+            }
+        }
+    }
+
+    score += 1;
+
+    for (let p of particles) {
+        p.x += p.vx; p.y += p.vy; p.life--;
+    }
+    particles = particles.filter(p=>p.life>0);
+
+    if (player.y > H) {
+        gameover = true;
+        setTimeout(()=>{ paused = true; drawPauseOverlay(); stopMusic(); }, 800);
+    }
+}
+
+function jump() {
+    if (player.onGround && !paused && !gameover) {
+        player.vy = jumpV;
+        particles.push(...makeParticles(player.x+12, player.y+24, '#fff'));
+    }
+}
+
+function draw() {
+    ctx.clearRect(0,0,W,H);
+    for (let pf of platforms) {
+        ctx.fillStyle = '#444';
+        ctx.fillRect(pf.x, pf.y, pf.w, pf.h);
+    }
+    for (let pt of portals) {
+        ctx.save();
+        ctx.globalAlpha = 0.7+0.3*Math.sin(performance.now()/120+pt.x);
+        ctx.strokeStyle = '#ff9800';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(pt.x+12, pt.y+12, 12, 0, 2*Math.PI);
+        ctx.stroke();
+        ctx.restore();
+    }
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+    for (let p of particles) {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life/12;
+        ctx.fillRect(p.x, p.y, 3, 3);
+        ctx.globalAlpha = 1;
+    }
+}
+
+function makeParticles(x, y, color) {
+    let arr = [];
+    for (let i=0;i<12;i++) {
+        arr.push({x, y, vx:Math.cos(i/12*2*Math.PI)*2, vy:Math.sin(i/12*2*Math.PI)*2, color, life:12});
+    }
+    return arr;
+}
+
+function drawPauseOverlay() {
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = '#181818';
+    ctx.fillRect(0,0,W,H);
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 32px monospace';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(gameover ? 'Game Over' : 'Paused', W/2, H/2-40);
+    ctx.font = '18px monospace';
+    ctx.fillStyle = '#ff9800';
+    ctx.fillText('Score: '+score, W/2, H/2);
+    ctx.fillText('High Score: '+highscore, W/2, H/2+32);
+    ctx.restore();
+}
+
+window.addEventListener('keydown', e=>{
+    if (e.code=='KeyP') {
+        paused = !paused;
+        if (paused) drawPauseOverlay();
+    }
+    if ((e.code=='Space'||e.code=='ArrowUp')) jump();
+});
+canvas.addEventListener('mousedown', jump);
+canvas.addEventListener('touchstart', jump);
+
+function updateUI() {
+    scoreDiv.textContent = 'Score: '+score;
+    highscoreDiv.textContent = 'High: '+(highscore = Math.max(highscore, score));
+}
+
+function loop() {
+    if (!paused && !gameover) update();
+    draw();
+    updateUI();
+    if (paused || gameover) drawPauseOverlay();
+    requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

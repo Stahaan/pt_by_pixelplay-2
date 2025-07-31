@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lock-On Legends - PT by PixelPlay</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body { background: #181818; color: #fff; font-family: monospace; margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+        #main-logo { font-size: 2.2em; margin: 32px 0 18px 0; letter-spacing: 2px; animation: breathe 2.4s ease-in-out infinite; }
+        @keyframes breathe { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.85; } 100% { transform: scale(1); opacity: 1; } }
+        canvas { background: #222; display: block; margin: 0 auto; image-rendering: pixelated; border-radius: 12px; }
+        #floating-menu-btn {
+            width: 32px; height: 32px;
+            background: #ff9800;
+            border: 3px solid #fff;
+            border-radius: 6px;
+            margin: 18px auto 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px #0006;
+            font-size: 18px;
+            transition: background 0.2s;
+            position: relative;
+        }
+        #floating-menu-btn:active { background: #ffa726; }
+        #floating-menu-btn .pixel-dot {
+            width: 12px; height: 12px;
+            background: #fff;
+            border-radius: 2px;
+            box-shadow: 0 0 0 2px #ff9800;
+        }
+        #floating-menu {
+            display: none;
+            position: relative;
+            margin: 0 auto;
+            margin-top: 8px;
+            background: #222;
+            border: 2px solid #ff9800;
+            border-radius: 12px;
+            box-shadow: 0 2px 16px #000a;
+            padding: 12px 24px;
+            z-index: 20;
+            min-width: 240px;
+            text-align: center;
+            animation: fadeIn 0.2s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(16px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+        .menu-btn {
+            background: #ff9800;
+            color: #fff;
+            border: 2px solid #fff;
+            border-radius: 8px;
+            font-size: 1.4em;
+            margin: 0 10px;
+            padding: 10px 18px;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            box-shadow: 0 2px 8px #0004;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .menu-btn:hover { background: #ffa726; color: #222; }
+        .menu-btn i { margin-right: 6px; }
+        #ui {
+            position: absolute;
+            top: 0; left: 0; width: 100%; pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px; /* Add spacing between score and highscore */
+        }
+        #score, #highscore {
+            font-family: monospace;
+            color: #ff9800;
+            font-size: 1.1em;
+            text-align: right;
+            text-shadow: 1px 1px 2px #000a;
+            margin-right: 16px;
+        }
+        .hide { display: none !important; }
+        @media (max-width: 600px) {
+            #floating-menu { min-width: 0; padding: 10px 4px; }
+            .menu-btn { font-size: 1.1em; padding: 8px 10px; margin: 0 4px; }
+        }
+    </style>
+</head>
+<body>
+<div id="main-logo">PT by <span style="color:#ff9800">PixelPlay</span></div>
+<canvas id="game" width="480" height="320"></canvas>
+<div id="floating-menu-btn" title="Menu"><div class="pixel-dot"></div></div>
+<div id="floating-menu">
+    <a href="index.html" class="menu-btn" id="menu-home" title="Home"><i class="fas fa-home"></i>Home</a>
+    <button class="menu-btn" id="menu-restart" title="Restart"><i class="fas fa-redo"></i>Restart</button>
+    <button class="menu-btn" id="menu-pause" title="Pause/Resume"><i class="fas fa-pause"></i>Pause</button>
+    <button class="menu-btn" id="menu-music" title="Music"><i class="fas fa-music"></i>Music</button>
+</div>
+<div id="ui">
+    <div id="score"></div>
+    <div id="highscore"></div>
+</div>
+<script>
+// --- Floating Menu Logic ---
+const floatingMenuBtn = document.getElementById('floating-menu-btn');
+const floatingMenu = document.getElementById('floating-menu');
+const menuRestart = document.getElementById('menu-restart');
+const menuPause = document.getElementById('menu-pause');
+const menuMusic = document.getElementById('menu-music');
+let musicOn = true, musicAudio = null, paused = false, gameover = false;
+
+floatingMenuBtn.onclick = () => {
+    floatingMenu.style.display = floatingMenu.style.display === 'block' ? 'none' : 'block';
+};
+document.body.addEventListener('click', (e) => {
+    if (!floatingMenu.contains(e.target) && e.target !== floatingMenuBtn && !floatingMenuBtn.contains(e.target)) {
+        floatingMenu.style.display = 'none';
+    }
+}, true);
+
+menuRestart.onclick = () => { floatingMenu.style.display = 'none'; resetGame(); };
+menuPause.onclick = () => {
+    floatingMenu.style.display = 'none';
+    paused = !paused;
+    if (paused) drawPauseOverlay();
+};
+menuMusic.onclick = () => {
+    musicOn = !musicOn;
+    menuMusic.innerHTML = musicOn ? '<i class="fas fa-music"></i>Music' : '<i class="fas fa-volume-mute"></i>Muted';
+    if (musicOn) playMusic(); else stopMusic();
+};
+
+// --- Music ---
+function playMusic() {
+    if (!musicAudio) {
+        musicAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7e2.mp3');
+        musicAudio.loop = true;
+        musicAudio.volume = 0.2;
+    }
+    if (musicOn) musicAudio.play();
+}
+function stopMusic() { if (musicAudio) musicAudio.pause(); }
+
+// --- Game Logic ---
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const scoreDiv = document.getElementById('score');
+const highscoreDiv = document.getElementById('highscore');
+let score = 0, highscore = 0, misses = 0;
+
+let targets, crosshair, t, spawnRate, lastSpawn, lockSound;
+
+function resetGame() {
+    targets = [];
+    crosshair = {x:W/2, y:H/2};
+    t = 0; gameover = false; misses = 0; score = 0;
+    spawnRate = 60; lastSpawn = 0; paused = false;
+    playMusic();
+}
+resetGame();
+
+function update() {
+    if (paused || gameover) return;
+    t++;
+    if (t%1800==0 && spawnRate>20) spawnRate -= 8;
+
+    if (t-lastSpawn > spawnRate) {
+        lastSpawn = t;
+        let r = 18+Math.random()*12;
+        let x = r+Math.random()*(W-2*r), y = r+Math.random()*(H-2*r);
+        let vx = (Math.random()-0.5)*2.5, vy = (Math.random()-0.5)*2.5;
+        targets.push({x, y, r, vx, vy, hit:false});
+    }
+
+    for (let tg of targets) {
+        tg.x += tg.vx; tg.y += tg.vy;
+        if (tg.x<tg.r||tg.x>W-tg.r) tg.vx*=-1;
+        if (tg.y<tg.r||tg.y>H-tg.r) tg.vy*=-1;
+    }
+
+    targets = targets.filter(tg=>!tg.hit);
+
+    if (misses>=3 && !gameover) {
+        gameover = true;
+        setTimeout(()=>{ paused = true; drawPauseOverlay(); stopMusic(); }, 800);
+    }
+}
+
+function lockOn(mx, my) {
+    if (paused || gameover) return;
+    let hit = false;
+    for (let tg of targets) {
+        let dx = mx-tg.x, dy = my-tg.y;
+        if (dx*dx+dy*dy < tg.r*tg.r) {
+            tg.hit = true; hit = true; score += 10;
+            playLockSound();
+        }
+    }
+    if (!hit) {
+        misses++;
+        playLockSound(true);
+    }
+}
+
+function playLockSound(miss=false) {
+    if (!lockSound) {
+        lockSound = new AudioContext();
+    }
+    let o = lockSound.createOscillator();
+    let g = lockSound.createGain();
+    o.type = 'square';
+    o.frequency.value = miss ? 180 : 420;
+    g.gain.value = 0.1;
+    o.connect(g).connect(lockSound.destination);
+    o.start();
+    o.stop(lockSound.currentTime+0.12);
+}
+
+function draw() {
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0,0,W,H);
+    for (let tg of targets) {
+        ctx.save();
+        ctx.globalAlpha = 0.8;
+        ctx.fillStyle = '#ff9800';
+        ctx.beginPath();
+        ctx.arc(tg.x, tg.y, tg.r, 0, 2*Math.PI);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+    }
+    ctx.save();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(crosshair.x, crosshair.y, 18, 0, 2*Math.PI);
+    ctx.moveTo(crosshair.x-24, crosshair.y);
+    ctx.lineTo(crosshair.x+24, crosshair.y);
+    ctx.moveTo(crosshair.x, crosshair.y-24);
+    ctx.lineTo(crosshair.x, crosshair.y+24);
+    ctx.stroke();
+    ctx.restore();
+    ctx.font = '16px monospace';
+    ctx.fillStyle = '#f44';
+    ctx.textAlign = 'left';
+    ctx.fillText('Misses: '+misses+'/3', 12, 28);
+}
+
+function drawPauseOverlay() {
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = '#181818';
+    ctx.fillRect(0,0,W,H);
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 32px monospace';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(gameover ? 'Game Over' : 'Paused', W/2, H/2-40);
+    ctx.font = '18px monospace';
+    ctx.fillStyle = '#ff9800';
+    ctx.fillText('Score: '+score, W/2, H/2);
+    ctx.fillText('High Score: '+highscore, W/2, H/2+32);
+    ctx.restore();
+}
+
+canvas.addEventListener('mousedown', e=>{
+    const rect = canvas.getBoundingClientRect();
+    lockOn(e.clientX - rect.left, e.clientY - rect.top);
+});
+canvas.addEventListener('touchstart', e=>{
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    lockOn(touch.clientX - rect.left, touch.clientY - rect.top);
+});
+canvas.addEventListener('mousemove', e=>{
+    const rect = canvas.getBoundingClientRect();
+    crosshair.x = e.clientX - rect.left;
+    crosshair.y = e.clientY - rect.top;
+});
+canvas.addEventListener('touchmove', e=>{
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    crosshair.x = touch.clientX - rect.left;
+    crosshair.y = touch.clientY - rect.top;
+});
+window.addEventListener('keydown', e=>{
+    if (e.code=='KeyP') {
+        paused = !paused;
+        if (paused) drawPauseOverlay();
+    }
+});
+
+function updateUI() {
+    scoreDiv.textContent = 'Score: '+score;
+    highscoreDiv.textContent = 'High: '+(highscore = Math.max(highscore, score));
+}
+
+function loop() {
+    if (!paused && !gameover) update();
+    draw();
+    updateUI();
+    if (paused || gameover) drawPauseOverlay();
+    requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

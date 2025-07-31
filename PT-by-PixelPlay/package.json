@@ -1,0 +1,23 @@
+{
+  "name": "pt-by-pixelplay",
+  "version": "1.0.0",
+  "description": "A browser-based 2D pixel-style game featuring two modes: Portal Runner and Lock-On Legends.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "live-server ."
+  },
+  "keywords": [
+    "game",
+    "javascript",
+    "html5",
+    "canvas",
+    "2d",
+    "pixel-art"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "live-server": "^1.2.1"
+  }
+}
