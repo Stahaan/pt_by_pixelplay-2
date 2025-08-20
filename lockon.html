@@ -1,317 +1,434 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lock-On Legends - PT by PixelPlay</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
-        body { background: #181818; color: #fff; font-family: monospace; margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
-        #main-logo { font-size: 2.2em; margin: 32px 0 18px 0; letter-spacing: 2px; animation: breathe 2.4s ease-in-out infinite; }
-        @keyframes breathe { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.85; } 100% { transform: scale(1); opacity: 1; } }
-        canvas { background: #222; display: block; margin: 0 auto; image-rendering: pixelated; border-radius: 12px; }
-        #floating-menu-btn {
-            width: 32px; height: 32px;
-            background: #ff9800;
-            border: 3px solid #fff;
-            border-radius: 6px;
-            margin: 18px auto 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 2px 8px #0006;
-            font-size: 18px;
-            transition: background 0.2s;
-            position: relative;
-        }
-        #floating-menu-btn:active { background: #ffa726; }
-        #floating-menu-btn .pixel-dot {
-            width: 12px; height: 12px;
-            background: #fff;
-            border-radius: 2px;
-            box-shadow: 0 0 0 2px #ff9800;
-        }
-        #floating-menu {
-            display: none;
-            position: relative;
-            margin: 0 auto;
-            margin-top: 8px;
-            background: #222;
-            border: 2px solid #ff9800;
-            border-radius: 12px;
-            box-shadow: 0 2px 16px #000a;
-            padding: 12px 24px;
-            z-index: 20;
-            min-width: 240px;
-            text-align: center;
-            animation: fadeIn 0.2s;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(16px);}
-            to { opacity: 1; transform: translateY(0);}
-        }
-        .menu-btn {
-            background: #ff9800;
-            color: #fff;
-            border: 2px solid #fff;
-            border-radius: 8px;
-            font-size: 1.4em;
-            margin: 0 10px;
-            padding: 10px 18px;
-            cursor: pointer;
-            transition: background 0.2s, color 0.2s;
-            box-shadow: 0 2px 8px #0004;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .menu-btn:hover { background: #ffa726; color: #222; }
-        .menu-btn i { margin-right: 6px; }
-        #ui {
-            position: absolute;
-            top: 0; left: 0; width: 100%; pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 8px; /* Add spacing between score and highscore */
-        }
-        #score, #highscore {
-            font-family: monospace;
-            color: #ff9800;
-            font-size: 1.1em;
-            text-align: right;
-            text-shadow: 1px 1px 2px #000a;
-            margin-right: 16px;
-        }
-        .hide { display: none !important; }
-        @media (max-width: 600px) {
-            #floating-menu { min-width: 0; padding: 10px 4px; }
-            .menu-btn { font-size: 1.1em; padding: 8px 10px; margin: 0 4px; }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lock‑On Legends – PT by PixelPlay (Refactor)</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+  <style>
+    :root {
+      --bg: #181818;
+      --panel: #222;
+      --accent: #ff9800;   /* normal target + UI */
+      --accent-2: #00e5ff; /* splitter */
+      --accent-3: #ffd54f; /* bonus */
+      --danger: #ff5252;   /* miss */
+      --white: #fff;
+      --text-dim: #d7d7d7;
+    }
+
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--white);
+      font-family: ui-monospace, Menlo, Monaco, "Cascadia Mono", Consolas, "Courier New", monospace;
+      margin: 0; display: grid; place-items: center;
+    }
+
+    .wrap { width: min(95vw, 860px); margin: 20px auto; display: flex; flex-direction: column; align-items: center; }
+
+    #main-logo { font-size: 2.1rem; letter-spacing: 2px; margin: 12px 0 10px; animation: breathe 2.4s ease-in-out infinite; text-shadow: 0 0 8px #000; }
+    #main-logo span { color: var(--accent); }
+    @keyframes breathe { 0%{ transform:scale(1); opacity:1 } 50%{ transform:scale(1.06); opacity:.9 } 100%{ transform:scale(1); opacity:1 } }
+
+    .stage { position: relative; width: 100%; display: grid; place-items: center; }
+
+    canvas { background: var(--panel); image-rendering: pixelated; border-radius: 12px; width: 100%; height: auto; max-width: 720px; box-shadow: 0 2px 16px #000a; }
+
+    /* Floating menu button */
+    #floating-menu-btn { width: 36px; height: 36px; background: var(--accent); border: 3px solid var(--white); border-radius: 8px; margin: 14px auto 0; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px #0006; font-size: 18px; transition: background .2s, transform .05s; user-select: none; }
+    #floating-menu-btn:active { transform: translateY(1px); }
+    #floating-menu-btn .pixel-dot { width: 12px; height: 12px; background: var(--white); border-radius: 2px; box-shadow: 0 0 0 2px var(--accent); }
+
+    #floating-menu { display: none; position: relative; margin-top: 8px; background: var(--panel); border: 2px solid var(--accent); border-radius: 12px; box-shadow: 0 2px 16px #000a; padding: 12px 16px; z-index: 20; min-width: 260px; text-align: center; animation: fadeIn .2s; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
+
+    .menu-btn { background: var(--accent); color: var(--white); border: 2px solid var(--white); border-radius: 10px; font-size: 1.1rem; margin: 6px; padding: 10px 14px; cursor: pointer; transition: background .2s, color .2s, transform .05s; box-shadow: 0 2px 8px #0004; display: inline-flex; align-items: center; justify-content: center; }
+    .menu-btn:hover { background: #ffa726; color: #222; }
+    .menu-btn:active { transform: translateY(1px); }
+    .menu-btn i { margin-right: 6px; }
+
+    /* UI overlay */
+    #ui { pointer-events: none; position: absolute; inset: 0; display: flex; flex-direction: column; align-items: flex-end; padding: 6px; gap: 6px; }
+    #score, #highscore, #misses { color: var(--accent); font-size: .95rem; text-shadow: 1px 1px 2px #000c; margin-right: 10px; }
+    #misses { color: var(--danger); }
+
+    /* Track ticker */
+    #track-info { position: absolute; left: 10px; bottom: 8px; right: 10px; text-align: left; color: var(--text-dim); font-size: .9rem; text-shadow: 1px 1px 2px #000c; opacity: 0; transition: opacity .4s ease; pointer-events: none; }
+    .ticker-visible { opacity: 1 !important; }
+
+    .overlay { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+    .overlay .panel { background: rgba(24,24,24,.88); border: 2px solid var(--accent); box-shadow: 0 0 18px rgba(255,152,0,.35), inset 0 0 12px rgba(0,0,0,.3); padding: 20px 28px; border-radius: 14px; text-align: center; }
+    .overlay .title { font-weight: 800; font-size: 2rem; letter-spacing: 2px; text-shadow: 0 0 8px rgba(255,152,0,.8), 0 0 18px rgba(255,152,0,.3); }
+    .overlay .sub { color: var(--text-dim); margin-top: 8px; font-size: 1rem; }
+
+    .hide { display: none !important; }
+
+    @media (max-width: 600px) {
+      .menu-btn { font-size: 1rem; padding: 8px 10px; margin: 4px; }
+      #floating-menu { min-width: 0; padding: 10px 6px; }
+      #score, #highscore, #misses { font-size: .9rem; }
+      .overlay .title { font-size: 1.6rem; }
+    }
+  </style>
 </head>
 <body>
-<div id="main-logo">PT by <span style="color:#ff9800">PixelPlay</span></div>
-<canvas id="game" width="480" height="320"></canvas>
-<div id="floating-menu-btn" title="Menu"><div class="pixel-dot"></div></div>
-<div id="floating-menu">
-    <a href="index.html" class="menu-btn" id="menu-home" title="Home"><i class="fas fa-home"></i>Home</a>
-    <button class="menu-btn" id="menu-restart" title="Restart"><i class="fas fa-redo"></i>Restart</button>
-    <button class="menu-btn" id="menu-pause" title="Pause/Resume"><i class="fas fa-pause"></i>Pause</button>
-    <button class="menu-btn" id="menu-music" title="Music"><i class="fas fa-music"></i>Music</button>
-</div>
-<div id="ui">
-    <div id="score"></div>
-    <div id="highscore"></div>
-</div>
-<script>
-// --- Floating Menu Logic ---
-const floatingMenuBtn = document.getElementById('floating-menu-btn');
-const floatingMenu = document.getElementById('floating-menu');
-const menuRestart = document.getElementById('menu-restart');
-const menuPause = document.getElementById('menu-pause');
-const menuMusic = document.getElementById('menu-music');
-let musicOn = true, musicAudio = null, paused = false, gameover = false;
+  <div class="wrap">
+    <div id="main-logo">PT by <span>PixelPlay</span></div>
 
-floatingMenuBtn.onclick = () => {
-    floatingMenu.style.display = floatingMenu.style.display === 'block' ? 'none' : 'block';
-};
-document.body.addEventListener('click', (e) => {
-    if (!floatingMenu.contains(e.target) && e.target !== floatingMenuBtn && !floatingMenuBtn.contains(e.target)) {
-        floatingMenu.style.display = 'none';
+    <div class="stage">
+      <canvas id="game" width="480" height="320" aria-label="Lock-On Legends Canvas"></canvas>
+
+      <!-- UI overlay -->
+      <div id="ui" aria-hidden="true">
+        <div id="score"></div>
+        <div id="highscore"></div>
+        <div id="misses"></div>
+        <div id="track-info"></div>
+      </div>
+
+      <!-- Start / Pause / Game Over overlays -->
+      <div id="pregame" class="overlay">
+        <div class="panel">
+          <div class="title">Get Ready…</div>
+          <div class="sub">Tap / Click to lock-on • Press Space to start</div>
+          <div id="countdown" class="sub" style="margin-top:6px; font-size:1.1rem; color: var(--accent);"></div>
+        </div>
+      </div>
+
+      <div id="paused" class="overlay hide">
+        <div class="panel">
+          <div class="title">Paused</div>
+          <div class="sub"><span id="paused-score">Score: 0</span> • <span id="paused-high">High: 0</span></div>
+          <div class="sub" style="margin-top:6px;">Press <b>P</b> or use the menu to resume</div>
+        </div>
+      </div>
+
+      <div id="gameover" class="overlay hide">
+        <div class="panel">
+          <div class="title">Game Over</div>
+          <div class="sub"><span id="over-score">Score: 0</span> • <span id="over-high">High: 0</span></div>
+          <div class="sub" style="margin-top:6px;">Press <b>Restart</b> in menu or hit <b>R</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating menu -->
+    <div id="floating-menu-btn" title="Menu"><div class="pixel-dot"></div></div>
+    <div id="floating-menu" role="dialog" aria-label="Game Menu">
+      <a href="index.html" class="menu-btn" id="menu-home" title="Home"><i class="fas fa-home"></i>Home</a>
+      <button class="menu-btn" id="menu-restart" title="Restart"><i class="fas fa-redo"></i>Restart</button>
+      <button class="menu-btn" id="menu-pause" title="Pause/Resume"><i class="fas fa-pause"></i>Pause</button>
+      <button class="menu-btn" id="menu-music" title="Music"><i class="fas fa-music"></i>Music</button>
+    </div>
+  </div>
+
+  <script>
+    /* ==================================================
+       QUICK SETUP: YOUR AUDIO FILES
+       --------------------------------------------------
+       Replace the placeholder file paths below with your own .mp3/.wav.
+       Keep files in your project, e.g. /assets/sfx and /assets/music
+       ================================================== */
+    const SFX_FILES = {
+      hit:   'assets/sfx/hit.wav',      // when a target is destroyed
+      miss:  'assets/sfx/miss.wav',     // when you miss
+      pause: 'game-music-walaki/death-scene.mp3',     // menu/pause toggle
+      over:  'game-music-walaki/UG-KANYE.mp3', // game over
+      start: 'game-music-walaki/PIXEL-DOT-(ruff-A).wav'     // pregame start
+    };
+
+    const MUSIC_PLAYLIST = [
+      { url: 'game-music-walaki/PIXEL-DOT-(ruff-A).wav', title: 'PIXEL DOT', artist: 'St. Walakii' },
+      { url: 'game-music-walaki/UG-KANYE.mp3', title: 'UG KANYE', artist: 'St. Walakii' },
+      { url: 'game-music-walaki/COD-GAME-THEME.mp3', title: 'COD', artist: 'St. Walakii' }
+    ];
+
+    /* ===================== BASICS & UI ===================== */
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    const scoreDiv = document.getElementById('score');
+    const highDiv  = document.getElementById('highscore');
+    const missDiv  = document.getElementById('misses');
+    const pregameEl = document.getElementById('pregame');
+    const pausedEl  = document.getElementById('paused');
+    const gameoverEl= document.getElementById('gameover');
+    const pausedScore = document.getElementById('paused-score');
+    const pausedHigh  = document.getElementById('paused-high');
+    const overScore   = document.getElementById('over-score');
+    const overHigh    = document.getElementById('over-high');
+    const countdownEl = document.getElementById('countdown');
+    const trackInfo   = document.getElementById('track-info');
+
+    // Menu
+    const floatingMenuBtn = document.getElementById('floating-menu-btn');
+    const floatingMenu = document.getElementById('floating-menu');
+    const menuRestart = document.getElementById('menu-restart');
+    const menuPause = document.getElementById('menu-pause');
+    const menuMusic = document.getElementById('menu-music');
+
+    // Game State
+    const STATE = { PREGAME: 0, RUNNING: 1, PAUSED: 2, OVER: 3 };
+    let state = STATE.PREGAME;
+    let userInteracted = false; // allow audio
+    let musicOn = true;
+
+    // Scores & difficulty
+    let score = 0, highscore = Number(localStorage.getItem('lockonHighscore') || 0);
+    let misses = 0, missLimit = 3;
+    let streak = 0, multiplier = 1, maxMultiplier = 5; // increases with consecutive hits
+
+    // Spawn/difficulty tuning
+    let t = 0, spawnRate = 60, lastSpawn = 0;  // frames
+    let speedScale = 1.0; // increases over time
+
+    // Entities
+    let targets = []; // {x,y,r,vx,vy,type: 'normal'|'splitter'|'bonus', hit:false}
+    let particles = []; // generic pixel particles
+    let fx = []; // miss red X flashes
+
+    // Crosshair
+    let crosshair = { x: W/2, y: H/2 };
+
+    // Screen shake
+    let shake = { t: 0, mag: 0 };
+
+    function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+    function lerp(a,b,t){ return a + (b-a)*t; }
+
+    /* ===================== AUDIO ===================== */
+    const sfx = {};
+    function initSfx(){
+      for (const [k, url] of Object.entries(SFX_FILES)){
+        const a = new Audio(); a.src = url; a.preload = 'auto'; a.volume = 0.5; sfx[k] = a;
+      }
     }
-}, true);
-
-menuRestart.onclick = () => { floatingMenu.style.display = 'none'; resetGame(); };
-menuPause.onclick = () => {
-    floatingMenu.style.display = 'none';
-    paused = !paused;
-    if (paused) drawPauseOverlay();
-};
-menuMusic.onclick = () => {
-    musicOn = !musicOn;
-    menuMusic.innerHTML = musicOn ? '<i class="fas fa-music"></i>Music' : '<i class="fas fa-volume-mute"></i>Muted';
-    if (musicOn) playMusic(); else stopMusic();
-};
-
-// --- Music ---
-function playMusic() {
-    if (!musicAudio) {
-        musicAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7e2.mp3');
-        musicAudio.loop = true;
-        musicAudio.volume = 0.2;
-    }
-    if (musicOn) musicAudio.play();
-}
-function stopMusic() { if (musicAudio) musicAudio.pause(); }
-
-// --- Game Logic ---
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-const W = canvas.width, H = canvas.height;
-const scoreDiv = document.getElementById('score');
-const highscoreDiv = document.getElementById('highscore');
-let score = 0, highscore = 0, misses = 0;
-
-let targets, crosshair, t, spawnRate, lastSpawn, lockSound;
-
-function resetGame() {
-    targets = [];
-    crosshair = {x:W/2, y:H/2};
-    t = 0; gameover = false; misses = 0; score = 0;
-    spawnRate = 60; lastSpawn = 0; paused = false;
-    playMusic();
-}
-resetGame();
-
-function update() {
-    if (paused || gameover) return;
-    t++;
-    if (t%1800==0 && spawnRate>20) spawnRate -= 8;
-
-    if (t-lastSpawn > spawnRate) {
-        lastSpawn = t;
-        let r = 18+Math.random()*12;
-        let x = r+Math.random()*(W-2*r), y = r+Math.random()*(H-2*r);
-        let vx = (Math.random()-0.5)*2.5, vy = (Math.random()-0.5)*2.5;
-        targets.push({x, y, r, vx, vy, hit:false});
+    function playSfx(name){
+      const a = sfx[name]; if (!a || !userInteracted) return; try { a.currentTime = 0; a.play(); } catch(e){}
     }
 
-    for (let tg of targets) {
+    // Music crossfade system with ticker
+    let musicA=null, musicB=null, activeMusic='A', currentTrack=0, tickerVisible=false, lastTicker=0;
+    function initMusic(){ if (musicA) return; musicA = new Audio(); musicB = new Audio(); [musicA,musicB].forEach(a=>{ a.loop=false; a.volume=0; a.preload='auto'; a.onended=()=>nextTrack(); }); loadTrackInto(musicA, currentTrack); }
+    function loadTrackInto(el, idx){ const tr = MUSIC_PLAYLIST[idx % MUSIC_PLAYLIST.length]; el.src = tr.url; }
+    function playMusic(){ if (!musicOn) return; if (!musicA) return; const active = activeMusic==='A'?musicA:musicB; fadeTo(active, .55, 600); if (active.paused) active.play().catch(()=>{}); showTicker(); }
+    function stopMusic(){ if (!musicA) return; fadeTo(musicA,0,400); fadeTo(musicB,0,400); }
+    function nextTrack(){ if (!musicA) return; const from = activeMusic==='A'?musicA:musicB; const to = activeMusic==='A'?musicB:musicA; currentTrack = (currentTrack+1)%MUSIC_PLAYLIST.length; loadTrackInto(to,currentTrack); to.currentTime=0; if (musicOn) to.play().catch(()=>{}); crossfade(from,to,1200,.55); activeMusic = activeMusic==='A'?'B':'A'; showTicker(); }
+    function fadeTo(audio,target,ms){ const steps=24, dt=ms/steps, dv=(target-audio.volume)/steps; let i=0; const iv=setInterval(()=>{ audio.volume = clamp(audio.volume+dv,0,1); if(++i>=steps){ clearInterval(iv); audio.volume = clamp(target,0,1); } }, dt); }
+    function crossfade(a,b,ms=1200,target=.55){ fadeTo(a,0,ms); fadeTo(b,target,ms); }
+    function showTicker(){ const tr = MUSIC_PLAYLIST[currentTrack]; trackInfo.textContent = `♪ ${tr.title} — ${tr.artist}`; trackInfo.classList.add('ticker-visible'); tickerVisible=true; lastTicker=performance.now(); }
+    function maybeAutoTicker(){ const now=performance.now(); if (now-lastTicker>30000) showTicker(); if (tickerVisible && now-lastTicker>5000){ trackInfo.classList.remove('ticker-visible'); tickerVisible=false; } }
+
+    /* ===================== INPUT & MENU ===================== */
+    function firstInteraction(){ if (userInteracted) return; userInteracted=true; initSfx(); initMusic(); startCountdown(3); playSfx('start'); }
+
+    window.addEventListener('keydown', (e)=>{
+      if (e.code==='Space'){ firstInteraction(); if(state===STATE.PREGAME) return; } // space does not shoot, click/tap does
+      if (e.code==='KeyP') togglePause();
+      if (e.code==='KeyR') restartGame();
+    });
+
+    canvas.addEventListener('mousedown', (e)=>{ firstInteraction(); const p = getPointer(e); lockOn(p.x,p.y); });
+    canvas.addEventListener('touchstart', (e)=>{ firstInteraction(); const p = getTouch(e); lockOn(p.x,p.y); }, {passive:true});
+    canvas.addEventListener('mousemove', (e)=>{ const p=getPointer(e); crosshair.x=p.x; crosshair.y=p.y; });
+    canvas.addEventListener('touchmove', (e)=>{ const p=getTouch(e); crosshair.x=p.x; crosshair.y=p.y; }, {passive:true});
+
+    function getPointer(e){ const r=canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+    function getTouch(e){ const r=canvas.getBoundingClientRect(), t=e.touches[0]; return { x: t.clientX - r.left, y: t.clientY - r.top }; }
+
+    // Menu behavior
+    floatingMenuBtn.onclick = ()=>{ floatingMenu.style.display = floatingMenu.style.display==='block'?'none':'block'; if (floatingMenu.style.display==='block') playSfx('pause'); };
+    document.body.addEventListener('click', (e)=>{ if (!floatingMenu.contains(e.target) && e.target!==floatingMenuBtn && !floatingMenuBtn.contains(e.target)) floatingMenu.style.display='none'; }, true);
+    menuRestart.onclick = ()=>{ floatingMenu.style.display='none'; restartGame(); };
+    menuPause.onclick   = ()=>{ floatingMenu.style.display='none'; togglePause(); };
+    menuMusic.onclick   = ()=>{ musicOn=!musicOn; menuMusic.innerHTML = musicOn?'<i class="fas fa-music"></i>Music':'<i class="fas fa-volume-mute"></i>Muted'; if (!userInteracted) return; if (musicOn) playMusic(); else stopMusic(); };
+
+    function togglePause(){ if (state===STATE.RUNNING){ state=STATE.PAUSED; pausedEl.classList.remove('hide'); playSfx('pause'); } else if (state===STATE.PAUSED){ state=STATE.RUNNING; pausedEl.classList.add('hide'); } }
+
+    /* ===================== GAME RESET & COUNTDOWN ===================== */
+    function resetGame(){
+      state = STATE.PREGAME;
+      score = 0; misses = 0; streak = 0; multiplier = 1;
+      t = 0; spawnRate = 60; lastSpawn = 0; speedScale = 1;
+      targets.length = 0; particles.length = 0; fx.length = 0;
+      crosshair.x=W/2; crosshair.y=H/2; shake.t=0; shake.mag=0;
+    }
+
+    let countdownTimer=null;
+    function startCountdown(sec){ state=STATE.PREGAME; pregameEl.classList.remove('hide'); let n=sec; countdownEl.textContent=`Starting in ${n}…`; clearInterval(countdownTimer); countdownTimer=setInterval(()=>{ n--; if(n>0) countdownEl.textContent=`Starting in ${n}…`; else { clearInterval(countdownTimer); countdownEl.textContent='GO!'; setTimeout(()=>{ pregameEl.classList.add('hide'); state=STATE.RUNNING; if (musicOn) playMusic(); }, 350); } }, 1000); }
+
+    function restartGame(){ resetGame(); pregameEl.classList.remove('hide'); pausedEl.classList.add('hide'); gameoverEl.classList.add('hide'); floatingMenu.style.display='none'; if (userInteracted){ startCountdown(3); playSfx('start'); } }
+
+    /* ===================== TARGET SPAWNING ===================== */
+    function spawnTarget(){
+      // Decide target type with probabilities (tuned)
+      const r = Math.random();
+      let type='normal';
+      if (r < 0.15) type='bonus';
+      else if (r < 0.35) type='splitter';
+
+      const radius = type==='bonus'? (18+Math.random()*10) : (16+Math.random()*10);
+      const x = radius + Math.random()*(W-2*radius);
+      const y = radius + Math.random()*(H-2*radius);
+      const baseSpeed = 1.2 + Math.random()*1.6; // base
+      const vx = (Math.random()<0.5?-1:1) * baseSpeed * speedScale;
+      const vy = (Math.random()<0.5?-1:1) * baseSpeed * speedScale;
+
+      targets.push({ x, y, r: radius, vx, vy, type, hit:false });
+    }
+
+    /* ===================== GAMEPLAY ===================== */
+    function update(){
+      if (state!==STATE.RUNNING) return;
+      t++;
+
+      // Difficulty ramp
+      if (t%300===0 && spawnRate>20) spawnRate -= 5;        // more frequent spawns
+      if (t%240===0) speedScale = clamp(speedScale+0.06, 1, 2.5); // faster targets
+
+      if (t-lastSpawn > spawnRate){ lastSpawn = t; spawnTarget(); }
+
+      // Move targets + bounce
+      for (const tg of targets){
         tg.x += tg.vx; tg.y += tg.vy;
-        if (tg.x<tg.r||tg.x>W-tg.r) tg.vx*=-1;
-        if (tg.y<tg.r||tg.y>H-tg.r) tg.vy*=-1;
+        if (tg.x<tg.r){ tg.x=tg.r; tg.vx*=-1; }
+        if (tg.x>W-tg.r){ tg.x=W-tg.r; tg.vx*=-1; }
+        if (tg.y<tg.r){ tg.y=tg.r; tg.vy*=-1; }
+        if (tg.y>H-tg.r){ tg.y=H-tg.r; tg.vy*=-1; }
+      }
+
+      // Clean up hits
+      targets = targets.filter(tg=>!tg.hit);
+
+      // Particles update
+      particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vx*=p.drag; p.vy=p.vy+p.g; p.life--; });
+      particles = particles.filter(p=>p.life>0).slice(-300);
+
+      // Miss FX update (red X fading)
+      fx.forEach(f=>{ f.life--; });
+      fx = fx.filter(f=>f.life>0).slice(-12);
+
+      // Shake decay
+      if (shake.t>0){ shake.t--; shake.mag *= 0.9; }
+
+      // End game
+      if (misses>=missLimit && state!==STATE.OVER){ state=STATE.OVER; playSfx('over'); stopMusic(); gameoverEl.classList.remove('hide'); }
     }
 
-    targets = targets.filter(tg=>!tg.hit);
-
-    if (misses>=3 && !gameover) {
-        gameover = true;
-        setTimeout(()=>{ paused = true; drawPauseOverlay(); stopMusic(); }, 800);
-    }
-}
-
-function lockOn(mx, my) {
-    if (paused || gameover) return;
-    let hit = false;
-    for (let tg of targets) {
-        let dx = mx-tg.x, dy = my-tg.y;
-        if (dx*dx+dy*dy < tg.r*tg.r) {
-            tg.hit = true; hit = true; score += 10;
-            playLockSound();
+    function lockOn(mx,my){
+      if (state!==STATE.RUNNING) return;
+      let anyHit=false;
+      for (const tg of targets){
+        const dx=mx-tg.x, dy=my-tg.y; if (dx*dx+dy*dy <= tg.r*tg.r){
+          anyHit=true; tg.hit=true;
+          // Score
+          const base = tg.type==='bonus'? 30 : 10;
+          score += Math.floor(base * multiplier);
+          streak++; multiplier = clamp(1 + Math.floor(streak/4), 1, maxMultiplier);
+          playSfx('hit');
+          screenShake(8);
+          spawnHitParticles(tg);
+          if (tg.type==='splitter' && tg.r>12){ spawnSplits(tg); }
         }
+      }
+      if (!anyHit){
+        misses++; streak=0; multiplier=1; playSfx('miss'); screenShake(4); spawnMissX(mx,my); }
     }
-    if (!hit) {
-        misses++;
-        playLockSound(true);
+
+    function spawnSplits(parent){
+      const count = 2 + (Math.random()<0.35?1:0);
+      for (let i=0;i<count;i++){
+        const nr = Math.max(10, parent.r*0.6);
+        const speed = 1.4 * speedScale + Math.random()*1.2;
+        const a = Math.random()*Math.PI*2;
+        targets.push({ x: parent.x+Math.cos(a)*6, y: parent.y+Math.sin(a)*6, r: nr, vx: Math.cos(a)*speed, vy: Math.sin(a)*speed, type: 'normal', hit:false });
+      }
     }
-}
 
-function playLockSound(miss=false) {
-    if (!lockSound) {
-        lockSound = new AudioContext();
+    /* ===================== VFX ===================== */
+    function spawnHitParticles(tg){
+      const color = tg.type==='bonus' ? '#ffd54f' : (tg.type==='splitter' ? '#00e5ff' : '#ff9800');
+      const n = 28;
+      for (let i=0;i<n;i++){
+        const a = (i/n)*Math.PI*2, s = 1.2 + Math.random()*2.2;
+        particles.push({ x: tg.x, y: tg.y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, drag: 0.96, g: 0.02, color, life: 24 + (Math.random()*10|0) });
+      }
     }
-    let o = lockSound.createOscillator();
-    let g = lockSound.createGain();
-    o.type = 'square';
-    o.frequency.value = miss ? 180 : 420;
-    g.gain.value = 0.1;
-    o.connect(g).connect(lockSound.destination);
-    o.start();
-    o.stop(lockSound.currentTime+0.12);
-}
 
-function draw() {
-    ctx.clearRect(0,0,W,H);
-    ctx.fillStyle = '#222';
-    ctx.fillRect(0,0,W,H);
-    for (let tg of targets) {
-        ctx.save();
-        ctx.globalAlpha = 0.8;
-        ctx.fillStyle = '#ff9800';
-        ctx.beginPath();
-        ctx.arc(tg.x, tg.y, tg.r, 0, 2*Math.PI);
-        ctx.fill();
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.restore();
+    function spawnMissX(x,y){ fx.push({ x,y, life: 18 }); }
+
+    function screenShake(m){ shake.t = 10; shake.mag = Math.max(shake.mag, m); }
+
+    /* ===================== DRAW ===================== */
+    function draw(){
+      // shake transform
+      let ox=0, oy=0; if (shake.t>0){ ox = (Math.random()*2-1)*shake.mag; oy = (Math.random()*2-1)*shake.mag; }
+      ctx.setTransform(1,0,0,1, ox, oy);
+
+      // clear
+      ctx.clearRect(-ox,-oy,W,H);
+      ctx.fillStyle = '#222'; ctx.fillRect(-ox,-oy,W,H);
+
+      // targets
+      for (const tg of targets){ drawTarget(tg); }
+
+      // crosshair
+      drawCrosshair();
+
+      // particles
+      for (const p of particles){ ctx.globalAlpha = Math.max(0, p.life/34); ctx.fillStyle = p.color; ctx.fillRect(p.x-1, p.y-1, 3, 3); ctx.globalAlpha=1; }
+
+      // miss X
+      for (const f of fx){ ctx.save(); ctx.globalAlpha = f.life/18; ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(f.x-12, f.y-12); ctx.lineTo(f.x+12, f.y+12); ctx.moveTo(f.x+12, f.y-12); ctx.lineTo(f.x-12, f.y+12); ctx.stroke(); ctx.restore(); }
+
+      // overlays darken via DOM; here only a subtle vignette when paused/over
+      if (state===STATE.PAUSED || state===STATE.OVER){ ctx.save(); ctx.globalAlpha=.12; ctx.fillStyle='#000'; ctx.fillRect(-ox,-oy,W,H); ctx.restore(); }
+
+      // UI text
+      scoreDiv.textContent = `Score: ${score}  ×${multiplier}`;
+      highscore = Math.max(highscore, score); localStorage.setItem('lockonHighscore', String(highscore)); highDiv.textContent = 'High: ' + highscore;
+      missDiv.textContent = `Misses: ${misses}/${missLimit}`;
+
+      pausedScore.textContent = 'Score: ' + score; pausedHigh.textContent = 'High: ' + highscore; overScore.textContent = 'Score: ' + score; overHigh.textContent = 'High: ' + highscore;
+
+      maybeAutoTicker();
+
+      // reset transform
+      ctx.setTransform(1,0,0,1,0,0);
     }
-    ctx.save();
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(crosshair.x, crosshair.y, 18, 0, 2*Math.PI);
-    ctx.moveTo(crosshair.x-24, crosshair.y);
-    ctx.lineTo(crosshair.x+24, crosshair.y);
-    ctx.moveTo(crosshair.x, crosshair.y-24);
-    ctx.lineTo(crosshair.x, crosshair.y+24);
-    ctx.stroke();
-    ctx.restore();
-    ctx.font = '16px monospace';
-    ctx.fillStyle = '#f44';
-    ctx.textAlign = 'left';
-    ctx.fillText('Misses: '+misses+'/3', 12, 28);
-}
 
-function drawPauseOverlay() {
-    ctx.save();
-    ctx.globalAlpha = 0.85;
-    ctx.fillStyle = '#181818';
-    ctx.fillRect(0,0,W,H);
-    ctx.globalAlpha = 1;
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 32px monospace';
-    ctx.fillStyle = '#fff';
-    ctx.fillText(gameover ? 'Game Over' : 'Paused', W/2, H/2-40);
-    ctx.font = '18px monospace';
-    ctx.fillStyle = '#ff9800';
-    ctx.fillText('Score: '+score, W/2, H/2);
-    ctx.fillText('High Score: '+highscore, W/2, H/2+32);
-    ctx.restore();
-}
-
-canvas.addEventListener('mousedown', e=>{
-    const rect = canvas.getBoundingClientRect();
-    lockOn(e.clientX - rect.left, e.clientY - rect.top);
-});
-canvas.addEventListener('touchstart', e=>{
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0];
-    lockOn(touch.clientX - rect.left, touch.clientY - rect.top);
-});
-canvas.addEventListener('mousemove', e=>{
-    const rect = canvas.getBoundingClientRect();
-    crosshair.x = e.clientX - rect.left;
-    crosshair.y = e.clientY - rect.top;
-});
-canvas.addEventListener('touchmove', e=>{
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0];
-    crosshair.x = touch.clientX - rect.left;
-    crosshair.y = touch.clientY - rect.top;
-});
-window.addEventListener('keydown', e=>{
-    if (e.code=='KeyP') {
-        paused = !paused;
-        if (paused) drawPauseOverlay();
+    function drawTarget(tg){
+      ctx.save();
+      const glow = tg.type==='bonus'? 'rgba(255,213,79,.55)' : (tg.type==='splitter'? 'rgba(0,229,255,.55)' : 'rgba(255,152,0,.5)');
+      const fill = tg.type==='bonus'? '#ffd54f' : (tg.type==='splitter'? '#00e5ff' : '#ff9800');
+      ctx.globalAlpha = .9; ctx.fillStyle = fill; ctx.beginPath(); ctx.arc(tg.x, tg.y, tg.r, 0, Math.PI*2); ctx.fill();
+      // ring
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+      // glow ring
+      ctx.globalAlpha = .35; ctx.strokeStyle = glow; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(tg.x, tg.y, tg.r+5*Math.sin(performance.now()/180), 0, Math.PI*2); ctx.stroke();
+      ctx.restore();
     }
-});
 
-function updateUI() {
-    scoreDiv.textContent = 'Score: '+score;
-    highscoreDiv.textContent = 'High: '+(highscore = Math.max(highscore, score));
-}
+    function drawCrosshair(){
+      const x=crosshair.x, y=crosshair.y;
+      ctx.save();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x,y,18,0,Math.PI*2); ctx.moveTo(x-22,y); ctx.lineTo(x+22,y); ctx.moveTo(x,y-22); ctx.lineTo(x,y+22); ctx.stroke();
+      // subtle pulsing dot
+      ctx.fillStyle = '#fff'; ctx.globalAlpha = .9; ctx.fillRect(x-1,y-1,2,2); ctx.globalAlpha=1; ctx.restore();
+    }
 
-function loop() {
-    if (!paused && !gameover) update();
-    draw();
-    updateUI();
-    if (paused || gameover) drawPauseOverlay();
-    requestAnimationFrame(loop);
-}
-loop();
-</script>
+    /* ===================== LOOP ===================== */
+    function loop(){ if (state===STATE.RUNNING) update(); draw(); requestAnimationFrame(loop); }
+
+    // Bootstrap
+    resetGame();
+    loop();
+
+    /* ===================== ACCESSIBILITY ===================== */
+    window.addEventListener('keydown', (e)=>{ if (e.code==='Space' && e.target===document.body) e.preventDefault(); });
+  </script>
 </body>
 </html>
