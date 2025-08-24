@@ -124,6 +124,9 @@
   </div>
 
   <script>
+     // AUDIO CONTROL FLAGS
+    let isPaused = false;
+    let isGameOver = false;
     /* ==================================================
        QUICK SETUP: YOUR AUDIO FILES
        --------------------------------------------------
@@ -134,14 +137,14 @@
       hit:   'assets/sfx/hit.wav',      // when a target is destroyed
       miss:  'assets/sfx/miss.wav',     // when you miss
       pause: 'game-music-walaki/death-scene.mp3',     // menu/pause toggle
-      over:  'game-music-walaki/UG-KANYE.mp3', // game over
-      start: 'game-music-walaki/PIXEL-DOT-(ruff-A).wav'     // pregame start
+      over:  'game-music-walaki/death-scene.mp3', // game over
+      start: 'game-music-walaki/PIXEL-DOT-(ruff-A).wavs'     // pregame start
     };
 
     const MUSIC_PLAYLIST = [
       { url: 'game-music-walaki/PIXEL-DOT-(ruff-A).wav', title: 'PIXEL DOT', artist: 'St. Walakii' },
-      { url: 'game-music-walaki/UG-KANYE.mp3', title: 'UG KANYE', artist: 'St. Walakii' },
-      { url: 'game-music-walaki/COD-GAME-THEME.mp3', title: 'COD', artist: 'St. Walakii' }
+      { url: 'game-music-walaki/PIXEL-DOT-(ruff-A).wav', title: 'PIXEL DOT', artist: 'St. Walakii' },
+      { url: 'game-music-walaki/PIXEL-DOT-(ruff-A).wav', title: 'PIXEL DOT', artist: 'St. Walakii' }
     ];
 
     /* ===================== BASICS & UI ===================== */
@@ -245,7 +248,30 @@
     menuPause.onclick   = ()=>{ floatingMenu.style.display='none'; togglePause(); };
     menuMusic.onclick   = ()=>{ musicOn=!musicOn; menuMusic.innerHTML = musicOn?'<i class="fas fa-music"></i>Music':'<i class="fas fa-volume-mute"></i>Muted'; if (!userInteracted) return; if (musicOn) playMusic(); else stopMusic(); };
 
-    function togglePause(){ if (state===STATE.RUNNING){ state=STATE.PAUSED; pausedEl.classList.remove('hide'); playSfx('pause'); } else if (state===STATE.PAUSED){ state=STATE.RUNNING; pausedEl.classList.add('hide'); } }
+    // function togglePause(){ if (state===STATE.RUNNING){ state=STATE.PAUSED; pausedEl.classList.remove('hide'); playSfx('pause'); } else if (state===STATE.PAUSED){ state=STATE.RUNNING; pausedEl.classList.add('hide'); } }
+
+    function togglePause(){
+  if (state === STATE.RUNNING){
+    state = STATE.PAUSED;
+    pausedEl.classList.remove('hide');
+    isPaused = true;
+
+    // Pause all music & SFX
+    if (musicA) musicA.pause();
+    if (musicB) musicB.pause();
+    Object.values(sfx).forEach(a => a.pause());
+  } 
+  else if (state === STATE.PAUSED){
+    state = STATE.RUNNING;
+    pausedEl.classList.add('hide');
+    isPaused = false;
+
+    // Resume game music only
+    if (musicOn) playMusic();
+  }
+}
+
+
 
     /* ===================== GAME RESET & COUNTDOWN ===================== */
     function resetGame(){
@@ -259,7 +285,27 @@
     let countdownTimer=null;
     function startCountdown(sec){ state=STATE.PREGAME; pregameEl.classList.remove('hide'); let n=sec; countdownEl.textContent=`Starting in ${n}…`; clearInterval(countdownTimer); countdownTimer=setInterval(()=>{ n--; if(n>0) countdownEl.textContent=`Starting in ${n}…`; else { clearInterval(countdownTimer); countdownEl.textContent='GO!'; setTimeout(()=>{ pregameEl.classList.add('hide'); state=STATE.RUNNING; if (musicOn) playMusic(); }, 350); } }, 1000); }
 
-    function restartGame(){ resetGame(); pregameEl.classList.remove('hide'); pausedEl.classList.add('hide'); gameoverEl.classList.add('hide'); floatingMenu.style.display='none'; if (userInteracted){ startCountdown(3); playSfx('start'); } }
+    // function restartGame(){ resetGame(); pregameEl.classList.remove('hide'); pausedEl.classList.add('hide'); gameoverEl.classList.add('hide'); floatingMenu.style.display='none'; if (userInteracted){ startCountdown(3); playSfx('start'); } }
+    function restartGame() {
+  resetGame();
+  pregameEl.classList.remove('hide');
+  pausedEl.classList.add('hide');
+  gameoverEl.classList.add('hide');
+  floatingMenu.style.display = 'none';
+
+  isPaused = false;
+  isGameOver = false;
+
+  // Stop game-over music if it’s playing
+  sfx.over.pause();
+  sfx.over.currentTime = 0;
+
+  if (userInteracted) {
+    startCountdown(3);
+    playSfx('start');
+  }
+}
+
 
     /* ===================== TARGET SPAWNING ===================== */
     function spawnTarget(){
@@ -314,7 +360,26 @@
       if (shake.t>0){ shake.t--; shake.mag *= 0.9; }
 
       // End game
-      if (misses>=missLimit && state!==STATE.OVER){ state=STATE.OVER; playSfx('over'); stopMusic(); gameoverEl.classList.remove('hide'); }
+      // if (misses>=missLimit && state!==STATE.OVER){ state=STATE.OVER; playSfx('over'); stopMusic(); gameoverEl.classList.remove('hide'); }
+      // End game
+if (misses >= missLimit && state !== STATE.OVER) {
+  state = STATE.OVER;
+  isGameOver = true;
+
+  // Pause all music & SFX
+  if (musicA) musicA.pause();
+  if (musicB) musicB.pause();
+  Object.values(sfx).forEach(a => a.pause());
+
+  // Play only game-over music
+  const overMusic = sfx.over;
+  overMusic.currentTime = 0;
+  overMusic.volume = 0.6;
+  overMusic.play().catch(() => {});
+
+  gameoverEl.classList.remove('hide');
+}
+
     }
 
     function lockOn(mx,my){

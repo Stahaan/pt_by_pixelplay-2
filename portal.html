@@ -229,6 +229,9 @@
   </div>
 
   <script>
+    // AUDIO CONTROL FLAGS
+    let isPaused = false;
+    let isGameOver = false;
     /* =====================
        GAME STATE & HELPERS
        ===================== */
@@ -330,7 +333,7 @@
     jump: new Audio('audio/jump.mp3'),
     land: new Audio('audio/land.mp3'),
     pause: new Audio('game-music-walaki/death-scene.mp3'),
-    over: new Audio('game-music-walaki/UG-KANYE.mp3'),
+    over: new Audio('game-music-walaki/RAW.mp3'),
     start: new Audio('game-music-walaki/MIKASA.wavq')
     };
     Object.values(sfx).forEach(a => { a.volume = 0.35; });
@@ -338,13 +341,8 @@
     // Playlist
     const playlist = [
     { src: 'game-music-walaki/MIKASA.wav', title: 'MIKASA', artist: 'St. Walakii' },
-    { src: 'game-music-walaki/UG-KANYE.mp3', title: 'UG KANYE', artist: 'St. Walakii' },
-    { src: 'game-music-walaki/death-scene.mp3', title: 'DEATH SCENE', artist: 'St. Walakii' },
-    { src: 'game-music-walaki/COD-GAME-THEME.mp3', title: 'COD', artist: 'St. Walakii' },
-    { src: 'game-music-walaki/KUDOS-FAM.mp3', title: 'KUDOS FAM', artist: 'St. Walakii' },
-    { src: 'game-music-walaki/MUNJU.wav', title: 'MUNJU', artist: 'St. Walakii' },
-    { src: 'game-music-walaki/RAW.mp3', title: 'RAW', artist: 'St. Walakii' },
-    { src: 'game-music-walaki/wait-what.mp3', title: 'WAIT WHAT!', artist: 'St. Walakii' }
+    { src: 'game-music-walaki/MIKASA.wav', title: 'MIKASA', artist: 'St. Walakii' },
+    { src: 'game-music-walaki/MIKASA.wav', title: 'MIKASA', artist: 'St. Walakii' }
     ];
 
 
@@ -461,19 +459,53 @@
       if (musicOn) playMusic(); else stopMusic();
     };
 
+    // function togglePause(){
+    //   if (state === STATE.RUNNING){ state = STATE.PAUSED; pausedEl.classList.remove('hide'); playSfx('pause'); }
+    //   else if (state === STATE.PAUSED){ state = STATE.RUNNING; pausedEl.classList.add('hide'); }
+    // }
+
     function togglePause(){
-      if (state === STATE.RUNNING){ state = STATE.PAUSED; pausedEl.classList.remove('hide'); playSfx('pause'); }
-      else if (state === STATE.PAUSED){ state = STATE.RUNNING; pausedEl.classList.add('hide'); }
-    }
+  if (state === STATE.RUNNING){
+    state = STATE.PAUSED;
+    pausedEl.classList.remove('hide');
+    isPaused = true;
+
+    // Pause all music & SFX
+    if (musicA) musicA.pause();
+    if (musicB) musicB.pause();
+    Object.values(sfx).forEach(a => a.pause());
+  } 
+  else if (state === STATE.PAUSED){
+    state = STATE.RUNNING;
+    pausedEl.classList.add('hide');
+    isPaused = false;
+
+    // Resume game music only
+    if (musicOn) playMusic();
+  }
+}
+
 
     function restartGame(){
-      resetGame();
-      pregameEl.classList.remove('hide');
-      pausedEl.classList.add('hide');
-      gameoverEl.classList.add('hide');
-      floatingMenu.style.display = 'none';
-      if (userInteracted) { startCountdown(3); playSfx('start'); }
-    }
+  resetGame();
+  pregameEl.classList.remove('hide');
+  pausedEl.classList.add('hide');
+  gameoverEl.classList.add('hide');
+  floatingMenu.style.display = 'none';
+
+  isPaused = false;
+  isGameOver = false;
+
+  // Stop game-over music if it’s playing
+  sfx.over.pause();
+  sfx.over.currentTime = 0;
+
+  if (userInteracted) {
+    startCountdown(3);
+    playSfx('start');
+  }
+}
+
 
     /* =====================
        COUNTDOWN
@@ -584,11 +616,26 @@
       particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += p.g; p.life--; });
       particles = particles.filter(p => p.life > 0).slice(-240); // cap
 
+      
       // death (fell off)
-      if (player.y > H + 40){
-        state = STATE.OVER; playSfx('over'); stopMusic();
-        gameoverEl.classList.remove('hide');
-      }
+if (player.y > H + 40){
+  state = STATE.OVER;
+  isGameOver = true;
+
+  // Pause all other sounds
+  if (musicA) musicA.pause();
+  if (musicB) musicB.pause();
+  Object.values(sfx).forEach(a => a.pause());
+
+  // Play only game-over music
+  const overMusic = sfx.over;
+  overMusic.currentTime = 0;
+  overMusic.volume = 0.6;
+  overMusic.play().catch(()=>{});
+
+  gameoverEl.classList.remove('hide');
+}
+
     }
 
     function rectsOverlap(x1,y1,w1,h1, x2,y2,w2,h2){
